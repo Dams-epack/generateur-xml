@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Générateur XML e-Pack</title>
+<style>*{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
+<style>
+/* Charte ePackPro : deep green #305754, lime #9BF944, strong blue #273A80, fond creme, Helvetica */
+:root{
+  --bg:#F6F0EA; --panel:#ffffff; --fg:#1f2d2b; --muted:#5f716e; --line:#DDD4C9;
+  --brand:#305754; --brand-fg:#ffffff; --blue:#273A80;
+  --accent:#305754; --accent-soft:#E6F4D6;
+  --cta:#9BF944; --cta-fg:#305754;
+  --band:#305754; --band-fg:#ffffff; --band-sub:#cfe2de;
+  --ok:#17803a; --warn:#7a5200; --warn-bg:#FDF0CF; --err:#C01818; --err-bg:#FDE4E4; --code-bg:#EFEAE3;
+  --f-display:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-body:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#122120; --panel:#1b2e2c; --fg:#e9f1ef; --muted:#9db3af; --line:#2f4846;
+  --accent:#9BF944; --accent-soft:#25423e;
+  --band:#305754; --ok:#6fdc92; --warn:#F7B32B; --warn-bg:#3a2d0e; --err:#ff8f8f; --err-bg:#3c1b1b; --code-bg:#0e1a19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#122120; --panel:#1b2e2c; --fg:#e9f1ef; --muted:#9db3af; --line:#2f4846;
+  --accent:#9BF944; --accent-soft:#25423e;
+  --band:#305754; --ok:#6fdc92; --warn:#F7B32B; --warn-bg:#3a2d0e; --err:#ff8f8f; --err-bg:#3c1b1b; --code-bg:#0e1a19; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);
+  padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header.band{background:var(--band);color:var(--band-fg);border-radius:6px;padding:22px 20px 18px;border-bottom:4px solid var(--cta)}
+h1{font:700 28px/1.1 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--band-sub);margin:8px 0 0;max-width:62ch}
+.blk{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:0 20px;min-width:0}
+.blk>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+.blk>summary::-webkit-details-marker{display:none}
+.blk>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s;margin-right:4px;flex:none}
+.blk[open]>summary::after{transform:rotate(-135deg)}
+.blk[open]>summary{padding-bottom:6px}
+.blk>summary:hover h2{color:var(--fg)}
+.blkbody{display:flex;flex-direction:column;gap:14px;padding:8px 0 20px;min-width:0}
+.res .tg{padding:6px 10px;font-size:13px}
+#results{display:flex;flex-direction:column;gap:10px}
+.res .cnt{font:600 12px var(--f-body);padding:2px 8px;border-radius:99px;background:var(--warn-bg);color:var(--warn)}
+h2{font:600 12px/1 var(--f-body);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0}
+button{font:600 14px var(--f-body);border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:9px 14px;border-radius:5px;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+button:hover:not(:disabled){background:var(--brand);color:var(--brand-fg);border-color:var(--brand)}
+button.primary{background:var(--cta);color:var(--cta-fg);border-color:var(--cta)}
+button.primary:hover:not(:disabled){background:var(--brand);color:var(--brand-fg);border-color:var(--brand)}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.drop{border:2px dashed var(--line);border-radius:6px;padding:26px 16px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{color:var(--fg);display:block;font-size:16px}
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.mod{border:1px solid var(--line);border-radius:5px;padding:12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;min-width:0}
+.mod.on{border-color:var(--accent);background:var(--accent-soft)}
+.mod.off{opacity:.55;cursor:default}
+.mod input{margin-top:4px;width:16px;height:16px;accent-color:var(--accent)}
+.mod b{font-weight:600;display:block}
+.mod span{color:var(--muted);font-size:13px;font-family:var(--f-mono)}
+.params{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+select,input[type=text]{font:14px var(--f-body);padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--fg);min-width:0}
+.res{border:1px solid var(--line);border-radius:5px;overflow:hidden;min-width:0}
+.res>header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg)}
+.res h3{margin:0;font:600 16px var(--f-display)}
+.res .fn{font:13px var(--f-mono);color:var(--muted);overflow-wrap:anywhere}
+.badge{font:600 12px var(--f-body);padding:2px 8px;border-radius:99px}
+.b-ok{background:var(--accent-soft);color:var(--ok)} .b-err{background:var(--err-bg);color:var(--err)}
+.msgs{padding:0 14px;display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.msg{font-size:13px;padding:6px 10px;border-radius:4px;overflow-wrap:anywhere}
+.msg.e{background:var(--err-bg);color:var(--err)} .msg.w{background:var(--warn-bg);color:var(--warn)}
+pre{margin:0;padding:12px 14px;background:var(--code-bg);font:12.5px/1.5 var(--f-mono);overflow-x:auto;max-height:230px;white-space:pre}
+.hint{color:var(--muted);font-size:13px}
+.empty{color:var(--muted);padding:6px 0}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg label{border:1px solid var(--line);border-radius:5px;padding:8px 12px;cursor:pointer;font-weight:500;display:flex;gap:8px;align-items:center}
+.seg label.on{border-color:var(--accent);background:var(--accent-soft)}
+.seg input{accent-color:var(--accent)}
+.map{display:grid;grid-template-columns:minmax(120px,170px) minmax(0,1fr) minmax(0,1fr);gap:8px 10px;align-items:center}
+.map .t{font:500 13px var(--f-mono)} .map .t i{color:var(--err);font-style:normal}
+.map select,.map input[type=text]{width:100%}
+.chkrow{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14px;padding:8px 0}.chkrow input{width:16px;height:16px;accent-color:var(--accent)}.chk small{font-size:12.5px;line-height:1.35}
+[hidden]{display:none!important}
+.detect{overflow-x:auto;border:1px solid var(--line);border-radius:5px}
+.detect table{border-collapse:collapse;width:100%;font-size:13px}
+.detect th,.detect td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+.detect th{font:600 12px var(--f-mono);color:var(--muted);background:var(--bg)}
+.detect td.ok{color:var(--fg)} .detect td.def{color:var(--warn)} .detect td.no{color:var(--muted)} .detect td.bad{color:var(--err);font-weight:600}
+.detect tr:last-child td{border-bottom:0}
+.detect td.sn{font-weight:600;color:var(--fg)}
+.adj summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}
+.adj .map{margin-top:10px}
+.sheets{display:flex;flex-direction:column;gap:6px}
+.sheets label{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;cursor:pointer}
+.sheets input{accent-color:var(--accent)}
+.sheets span{color:var(--muted);font:12.5px var(--f-mono)}
+@media (max-width:560px){.map{grid-template-columns:1fr}.map .t{margin-top:8px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="band">
+    <h1>Générateur XML e-Pack</h1>
+    <p class="sub">Dépose le fichier Excel du client tel quel. Choisis le module, vérifie la correspondance des colonnes, récupère un XML par onglet.</p>
+  </header>
+
+  <details class="blk" open><summary><h2>1 · Fichier Excel du client</h2></summary><div class="blkbody">
+    <label class="drop" id="drop" for="file" tabindex="0">
+      <strong id="dropTitle">Dépose le fichier .xlsx ici ou clique pour le choisir</strong>
+      <span id="dropSub">Tous les onglets sont lus : un XML par onglet (langue, pays, site).</span>
+    </label>
+    <input id="file" type="file" accept=".xlsx,.xlsm,.xls" hidden>
+    <div class="row"><button id="btnDemo">Charger un exemple</button></div>
+  </div></details>
+
+  <details class="blk" id="s2" hidden open><summary><h2>2 · Module et correspondance des colonnes</h2></summary><div class="blkbody">
+    <div class="seg" id="modSeg" role="radiogroup" aria-label="Module"></div>
+    <p class="hint">Les colonnes sont reconnues automatiquement dans chaque onglet (« Category » et « Catégorie » sont la même chose). Contrôle le tableau, puis génère.</p>
+    <div class="detect"><table id="detect"></table></div>
+    <details class="adj"><summary>Ajuster (valeur fixe, ignorer une colonne)</summary><div class="map" id="map"></div></details>
+    <div class="params" id="params" hidden>
+      <label class="f" for="dltype">Type de DLC
+        <select id="dltype">
+          <option value="">À choisir</option><option value="-1">-1 · interface</option><option value="0">0 · jours</option>
+          <option value="1">1 · services</option><option value="2">2 · heures</option><option value="3">3 · minutes</option></select></label>
+      <label class="f" for="isddm">IsDDM par défaut
+        <select id="isddm"><option value="false">false</option><option value="true">true</option></select></label>
+      <label class="f chk" for="ange"><span>Client</span>
+        <span class="chkrow"><input id="ange" type="checkbox"> Boulangerie Ange</span>
+        <small>Si coché : IsDDM = true pour la catégorie « DDM SECONDAIRE », valeur par défaut pour les autres.</small></label>
+    </div>
+    <h2>Onglets à traiter</h2>
+    <div class="sheets" id="sheets"></div>
+    <div class="row"><button class="primary" id="btnGen">Générer les XML</button><span class="hint" id="genHint"></span></div>
+  </div></details>
+
+  <details class="blk" id="s3" hidden open><summary><h2>3 · Fichiers générés</h2></summary><div class="blkbody">
+    <div class="row"><button class="primary" id="btnZip" disabled>Tout enregistrer en ZIP</button><button id="btnClear">Vider la liste</button><span class="hint" id="zipHint"></span></div>
+    <div id="results"></div>
+    <p class="note">Le ZIP contient un dossier par onglet. Changer de module puis regénérer ajoute les fichiers à la liste. Les Id vides sont générés (18 chiffres), les TS vides prennent l'heure de génération. Un onglet en erreur n'est pas généré : corrige la ligne indiquée et redépose le fichier.</p>
+  </div></details>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+/* ===== CORE (pur, testable) ===== */
+const MODS = {
+  Service: { el:'DefProductService', out:'ProductsService.xml', eol:'\r\n', enc:'utf-8',
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['TempMin','num'],['TempMax','num'],['Delete','bool']],
+    req:['Name','TempMin','TempMax'],
+    order:['idFileAttente','Id','TS','Delete','Disable','Name','Category','TempMin','TempMax'], forceFalse:['Delete'] },
+  Production: { el:'DefProductProduction', out:'ProductsProduction.xml', eol:'\n', enc:'UTF-8',
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['DateLimit','int'],['Delete','bool']],
+    req:['Name','DateLimit'],
+    order:['idFileAttente','Id','TS','Name','Category','DateLimit','Delete','Disable'] },
+  Stickers: { el:'DefProductStickerV3', out:'ProductsStickers.xml', eol:'\n', enc:'UTF-8', params:true,
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['DateLimit','int'],['Fridge','text'],['Printer','text'],['MustIndicateOrigin','bool'],['Photo','text'],['Delete','bool']],
+    req:['Name','DateLimit'],
+    order:['idFileAttente','Id','TS','Name','Category','DateLimit','DLType','Fridge','Printer','MustIndicateOrigin','Photo','Delete','IsDDM','MustIndicateDLC','IsDLUO','Disable'] },
+  Freezing: { el:'DefProductFreezing', out:'ProductsFreezing.xml', eol:'\r\n', enc:'UTF-8',
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['Printer','text'],['Dlc','int'],['Ddm','int'],['Du','int'],['Delete','bool']],
+    req:['Name','Dlc','Ddm','Du'],
+    order:['idFileAttente','Id','TS','Name','Category','Ddm','Dlc','Du','Delete','Disable'] },
+  Frozen: { el:'DefProductFrozen', out:'ProductsFrozen.xml', eol:'\r\n', enc:'utf-8',
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['DateLimit','int'],['Printer','text'],['Delete','bool']],
+    req:['Name','DateLimit'],
+    order:['idFileAttente','Id','TS','Name','Category','DateLimit','Delete','Disable'] },
+  StockIn: { el:'DefStockInV3', out:'ProductsStockIn.xml', eol:'\r\n', enc:'UTF-8',
+    cols:[['Id','id'],['TS','ts'],['Name','text'],['Category','text'],['TempMin','num'],['TempMax','num'],['TempLimit','num'],['CheckList_Name','text'],['CheckList_AllMandatoryToValid','bool'],['OrderId','text'],['CategoryId','text'],['SupplierId','text'],['ProductReference','text'],['Quantity','text'],['DLCTheorique','text'],['Delete','bool'],['NumLot','text']],
+    req:['Name','TempMin','TempMax'],
+    order:['idFileAttente','Id','TS','Name','Category','TempMin','TempMax','TempLimit','CheckList_Name','CheckList_AllMandatoryToValid','Delete','Disable','ProductReference'] },
+};
+const TRIM = { Service:['Name','Category'], Production:['Name','Category'], Stickers:['Name','Category'],
+  Freezing:['Name','Category'], Frozen:['Name','Category'], StockIn:['Name','Category','CheckList_Name'] };
+const BOOLS = {true:'true',vrai:'true',oui:'true','1':'true',x:'true',false:'false',faux:'false',non:'false','0':'false'};
+const LIG = { 'Œ':'OE','œ':'oe','Æ':'AE','æ':'ae' };
+const cleanText = v => v.replace(/[ŒœÆæ]/g, c => LIG[c]).replace(/\s+/g,' ').trim();
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const pad2 = n => String(n).padStart(2,'0');
+const fmtDate = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+
+function cellText(v, kind, warns, where){
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (v instanceof Date) return fmtDate(v);
+  if (typeof v === 'number'){
+    if (Number.isInteger(v)) v = String(v); else v = String(v);
+    if (kind === 'id'){ warns.push(`${where} : Id numérique, zéros initiaux possiblement perdus, complété à 18 chiffres`); return v.padStart(18,'0'); }
+    return v;
+  }
+  return String(v).trim();
+}
+function randId(){
+  const a = new Uint32Array(3); crypto.getRandomValues(a);
+  const n = (BigInt(a[0]) << 64n | BigInt(a[1]) << 32n | BigInt(a[2])) % (10n ** 18n);
+  return n.toString().padStart(18,'0');
+}
+/* aoa = tableau de lignes (première ligne = en-têtes) */
+function readRows(name, aoa, off){
+  off = off || 0;
+  const m = MODS[name], errs = [], warns = [], rows = [];
+  if (!aoa || !aoa.length) return { rows, errs, warns, count:0 };
+  const hdr = aoa[0].map(h => h == null ? '' : String(h).trim());
+  const idx = {}; hdr.forEach((h,i) => { if (h) idx[h] = i; });
+  const known = m.cols.map(c => c[0]);
+  const unknown = hdr.filter(h => h && !known.includes(h));
+  if (unknown.length) warns.push(`Colonnes ignorées (inconnues) : ${unknown.join(', ')}`);
+  m.req.forEach(t => { if (!(t in idx)) errs.push(`Colonne obligatoire absente : ${t}`); });
+  if (errs.length) return { rows, errs, warns, count:0 };
+  for (let r = 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    if (row.every(v => v == null || String(v).trim() === '')) continue;
+    const rec = { _row: r+1+off }; let bad = false;
+    for (const [tag, kind] of m.cols){
+      const where = `L${r+1+off} ${tag}`;
+      let val = cellText(tag in idx ? row[idx[tag]] : null, kind, warns, where);
+      const fail = msg => { errs.push(`${where} : ${msg}`); bad = true; };
+      if (val){
+        if (kind === 'bool'){ const b = BOOLS[val.toLowerCase()]; if (b === undefined) fail(`booléen invalide « ${val} »`); else val = b; }
+        else if (kind === 'int'){ const v2 = val.replace(',','.'); if (!/^-?\d+(\.0+)?$/.test(v2)) fail(`entier attendu, reçu « ${val} »`); else val = String(parseInt(v2,10)); }
+        else if (kind === 'num'){ const v2 = val.replace(',','.'); if (!/^-?\d+(\.\d+)?$/.test(v2)) fail(`nombre attendu, reçu « ${val} »`); else val = v2.replace(/\.0+$/,''); }
+        else if (kind === 'ts' && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(val)) fail(`TS invalide « ${val} » (AAAA-MM-JJ HH:MM:SS)`);
+        else if (kind === 'id' && !/^\d+$/.test(val)) fail(`Id non numérique « ${val} »`);
+      } else if (m.req.includes(tag)) fail('valeur obligatoire manquante');
+      rec[tag] = val;
+    }
+    if (!bad) rows.push(rec);
+  }
+  return { rows, errs, warns, count: rows.length + 0 };
+}
+function finalize(name, rows, errs, warns, now){
+  const used = new Set(); let gen = 0;
+  rows.forEach(r => { if (r.Id){ if (used.has(r.Id)) errs.push(`L${r._row} : Id en double ${r.Id}`); used.add(r.Id); } });
+  rows.forEach(r => {
+    if (!r.Id){ let i; do { i = randId(); } while (used.has(i)); used.add(i); r.Id = i; gen++; }
+    if (!r.TS) r.TS = now;
+    if (!r.Delete) r.Delete = 'false';
+  });
+  if (gen) warns.push(`${gen} Id généré(s) pour de nouveaux produits`);
+  const seen = {};
+  rows.forEach(r => { const k = (r.Name+'|'+(r.Category||'')).toLowerCase();
+    if (k in seen) warns.push(`Doublon Nom + Catégorie « ${r.Name} » (L${seen[k]} et L${r._row})`); else seen[k] = r._row; });
+}
+function buildXml(name, rows, p, warns){
+  const m = MODS[name], eol = m.eol, out = [];
+  const trims = TRIM[name];
+  const excCat = (p.excCat||'').trim().toLowerCase(); let excN = 0;
+  out.push(`<?xml version="1.0" encoding="${m.enc}"?>`);
+  out.push(`<ArrayOf${m.el} xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">`);
+  for (const r0 of rows){
+    const r = Object.assign({}, r0);
+    for (const t of trims){ if (r[t]) r[t] = cleanText(r[t]); }
+    if (m.forceFalse) m.forceFalse.forEach(t => r[t] = 'false');
+    r.idFileAttente = '0'; r.Disable = 'false'; r.MustIndicateDLC = 'false'; r.IsDLUO = 'false';
+    if (!r.MustIndicateOrigin) r.MustIndicateOrigin = 'false';
+    if (name === 'Stickers'){
+      r.DLType = (r.DateLimit === '-1' || p.dltype === '' || p.dltype == null) ? '-1' : String(p.dltype);
+      const hit = excCat && (r.Category||'').trim().toLowerCase() === excCat; if (hit) excN++;
+      r.IsDDM = hit ? (p.excVal||'true') : (p.isddm||'false');
+    }
+    out.push(`  <${m.el}>`);
+    const known = new Set(m.order);
+    const tags = m.order.slice();
+    m.cols.forEach(([t]) => { if (!known.has(t) && r[t]) tags.push(t); });
+    for (const t of tags){
+      const v = r[t] == null ? '' : r[t];
+      if (v) out.push(`    <${t}>${esc(v)}</${t}>`);
+      else out.push(t === 'ProductReference' ? `    <${t} />` : `    <${t}/>`);
+    }
+    out.push(`  </${m.el}>`);
+  }
+  out.push(`</ArrayOf${m.el}>`);
+  if (excCat) warns.push(excN ? `Boulangerie Ange : ${excN} produit(s) en « ${p.excCat} », IsDDM = ${p.excVal||'true'}` : `Boulangerie Ange coché mais aucune ligne n'a la catégorie « ${p.excCat} » : IsDDM = ${p.isddm||'false'} partout. Vérifie les intitulés de catégorie du fichier.`);
+  return out.join(eol) + eol;
+}
+function countChanged(name, rows){
+  let n = 0; TRIM[name].forEach(t => rows.forEach(r => { if (r[t] && cleanText(r[t]) !== r[t]) n++; })); return n;
+}
+function generate(name, aoa, p, now, off){
+  const res = readRows(name, aoa, off);
+  const { rows, errs, warns } = res;
+  let xml = null, cleaned = 0;
+  const m = MODS[name];
+  if (!errs.length && rows.length){
+    finalize(name, rows, errs, warns, now);
+    if (m.params && rows.some(r => r.DateLimit !== '-1') && (p.dltype === '' || p.dltype == null || ![-1,0,1,2,3].includes(Number(p.dltype)))) errs.push('Type de DLC à choisir : des DateLimit autres que -1 sont présentes (-1, 0, 1, 2 ou 3)');
+    if (name === 'Service' && rows.some(r => r.Delete === 'true')) warns.push('Service : Delete est toujours remis à false (règle de la skill)');
+    if (!errs.length){ cleaned = countChanged(name, rows); xml = buildXml(name, rows, p, warns); }
+  }
+  return { xml, errs, warns, count: rows.length, cleaned, file: m.out };
+}
+
+/* ===== UI ===== */
+const $ = id => document.getElementById(id);
+const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const SYN = {
+  Id:['id','identifiant','code'], TS:['ts','datemaj','dernieremaj'],
+  Name:['name','nom','designation','libelle','produit','article','intitule','nomproduit'],
+  Category:['category','categorie','famille','rayon','groupe','type'],
+  DateLimit:['datelimit','dlc','dluo','dl','duree','dureedeconservation'],
+  TempMin:['tempmin','tmin','temperaturemin','min'], TempMax:['tempmax','tmax','temperaturemax','max'], TempLimit:['templimit','tlimite','limite'],
+  Dlc:['dlc'], Ddm:['ddm'], Du:['du'], Printer:['printer','imprimante'], Fridge:['fridge','frigo'], Photo:['photo'],
+  MustIndicateOrigin:['mustindicateorigin','origine'], Delete:['delete','supprime'],
+  CheckList_Name:['checklistname','checklist'], CheckList_AllMandatoryToValid:['checklistallmandatorytovalid'],
+  ProductReference:['productreference','reference','ref']
+};
+let sheets = [];     // [{name, header:[...], rows:[[...]], hdrRow, count}]
+let mod = 'Production';
+let maps = {};       // module -> { tag: {t:'col'|'fixed'|'none', v:'' } }
+let outputs = {};    // clé "mod|onglet" -> { xml, file, dir }
+let downloads = null;
+(async () => { try { downloads = await (window.claude && window.claude.use ? window.claude.use('downloads') : null); } catch(e){ downloads = null; } })();
+
+const slug = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'onglet';
+function aoaOf(ws){ return XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null, blankrows:true }); }
+function findHeader(aoa){
+  const all = new Set(Object.values(SYN).flat());
+  let best = -1, bestScore = 0;
+  for (let i = 0; i < Math.min(aoa.length, 15); i++){
+    const cells = (aoa[i] || []).filter(v => typeof v === 'string' && v.trim());
+    const score = cells.filter(v => all.has(norm(v))).length * 10 + (cells.length >= 2 ? 1 : 0);
+    if (score > bestScore){ bestScore = score; best = i; }
+  }
+  return best < 0 ? 0 : best;
+}
+function loadWorkbook(wb, label){
+  sheets = [];
+  wb.SheetNames.forEach(sn => {
+    const aoa = aoaOf(wb.Sheets[sn]); if (!aoa.length) return;
+    const h = findHeader(aoa);
+    const header = (aoa[h] || []).map(v => v == null ? '' : String(v).trim());
+    const rows = aoa.slice(h + 1);
+    const count = rows.filter(r => r.some(v => v != null && String(v).trim() !== '')).length;
+    sheets.push({ name: sn, header, rows, hdrRow: h + 1, count });
+  });
+  $('dropTitle').textContent = label;
+  $('dropSub').textContent = `${sheets.length} onglet(s) lu(s). Dépose un autre fichier pour le remplacer.`;
+  maps = {}; outputs = {}; renderOutputs();
+  $('s2').hidden = false; renderModule();
+}
+function matchIdx(tag, header, used, loose){
+  const syn = SYN[tag] || [norm(tag)];
+  return header.findIndex((c, i) => {
+    if (!c || used.has(i)) return false; const n = norm(c);
+    return loose ? syn.some(x => x.length >= 3 && n.includes(x)) : (n === norm(tag) || syn.includes(n));
+  });
+}
+/* Reconnaissance automatique des colonnes d'un onglet : exact/synonyme d'abord, puis approximatif */
+function resolveSheet(s){
+  const tags = MODS[mod].cols.map(c => c[0]), idx = {}, used = new Set();
+  tags.forEach(t => { idx[t] = -1; });
+  [false, true].forEach(loose => tags.forEach(t => {
+    if (idx[t] >= 0 || maps[mod][t].t !== 'auto') return;
+    const k = matchIdx(t, s.header, used, loose); if (k >= 0){ idx[t] = k; used.add(k); }
+  }));
+  return idx;
+}
+const kindOfTag = t => MODS[mod].cols.find(c => c[0] === t)[1];
+const isDefTag = t => MODS[mod].req.includes(t) && ['int','num'].includes(kindOfTag(t));
+function renderDetect(){
+  const tb = $('detect'); tb.textContent = '';
+  const tags = MODS[mod].cols.map(c => c[0]).filter(t => maps[mod][t].t !== 'none');
+  const hr = document.createElement('tr');
+  ['Onglet', ...tags].forEach(x => { const th = document.createElement('th'); th.textContent = x; hr.append(th); }); tb.append(hr);
+  sheets.forEach(s => {
+    const idx = resolveSheet(s), tr = document.createElement('tr');
+    const sn = document.createElement('td'); sn.className = 'sn'; sn.textContent = s.name; tr.append(sn);
+    tags.forEach(t => {
+      const td = document.createElement('td'), st = maps[mod][t];
+      if (st.t === 'fixed' && st.v !== ''){ td.className = 'ok'; td.textContent = `= ${st.v}`; }
+      else if (st.t === 'fixed'){ td.className = 'no'; td.textContent = '-'; }
+      else if (idx[t] >= 0){ td.className = 'ok'; td.textContent = s.header[idx[t]]; }
+      else if (isDefTag(t)){ td.className = 'def'; td.textContent = '-1'; }
+      else if (MODS[mod].req.includes(t)){ td.className = 'bad'; td.textContent = 'introuvable'; }
+      else if (t === 'Id' || t === 'TS'){ td.className = 'no'; td.textContent = 'généré'; }
+      else { td.className = 'no'; td.textContent = '-'; }
+      tr.append(td);
+    });
+    tb.append(tr);
+  });
+}
+function renderModule(){
+  const seg = $('modSeg'); seg.textContent = '';
+  Object.keys(MODS).forEach(n => {
+    const l = document.createElement('label'); l.className = n === mod ? 'on' : '';
+    const i = document.createElement('input'); i.type = 'radio'; i.name = 'mod'; i.checked = n === mod;
+    i.addEventListener('change', () => { mod = n; renderModule(); });
+    l.append(i, document.createTextNode(n)); seg.append(l);
+  });
+  if (!maps[mod]) { maps[mod] = {}; MODS[mod].cols.forEach(([t]) => { maps[mod][t] = { t:'auto', v:'' }; }); }
+  const box = $('map'); box.textContent = '';
+  MODS[mod].cols.forEach(([tag]) => {
+    const st = maps[mod][tag], req = MODS[mod].req.includes(tag);
+    const t = document.createElement('div'); t.className = 't'; t.textContent = tag;
+    if (req){ const x = document.createElement('i'); x.textContent = ' *'; t.append(x); }
+    const sel = document.createElement('select'); sel.id = `sel_${tag}`; sel.setAttribute('aria-label', `Source de ${tag}`);
+    [['auto','Automatique'],['fixed','Valeur fixe…'],['none','Ignorer']].forEach(([v, txt]) => { const o = document.createElement('option'); o.value = v; o.textContent = txt; sel.append(o); });
+    sel.value = st.t;
+    const inp = document.createElement('input'); inp.type = 'text'; inp.id = `fix_${tag}`; inp.placeholder = 'valeur pour toutes les lignes';
+    inp.value = st.t === 'fixed' ? st.v : ''; inp.style.visibility = st.t === 'fixed' ? 'visible' : 'hidden';
+    sel.addEventListener('change', () => { maps[mod][tag] = { t: sel.value, v: inp.value };
+      inp.style.visibility = sel.value === 'fixed' ? 'visible' : 'hidden'; if (sel.value === 'fixed') inp.focus(); renderDetect(); });
+    inp.addEventListener('input', () => { maps[mod][tag] = { t:'fixed', v:inp.value }; renderDetect(); });
+    box.append(t, sel, inp);
+  });
+  $('params').hidden = !MODS[mod].params;
+  renderDetect(); renderSheets();
+}
+function renderSheets(){
+  const box = $('sheets'); box.textContent = '';
+  sheets.forEach((s, i) => {
+    const l = document.createElement('label');
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = `sh_${i}`; cb.checked = s.count > 0; cb.disabled = s.count === 0; cb.dataset.i = i;
+    cb.addEventListener('change', updateHint);
+    const t = document.createElement('b'); t.textContent = s.name; t.style.fontWeight = 600;
+    const d = document.createElement('span'); d.textContent = s.count ? `${s.count} ligne(s) · en-têtes ligne ${s.hdrRow}` : 'aucune donnée';
+    l.append(cb, t, d); box.append(l);
+  });
+  updateHint();
+}
+function chosenSheets(){ return Array.from(document.querySelectorAll('#sheets input:checked')).map(i => sheets[+i.dataset.i]); }
+function updateHint(){ const n = chosenSheets().length; $('btnGen').disabled = n === 0; $('genHint').textContent = n ? `${n} onglet(s) · module ${mod}` : 'Aucun onglet à traiter'; }
+
+function normalized(s){
+  const m = MODS[mod], mp = maps[mod], idx = resolveSheet(s);
+  const eff = t => (mp[t].t === 'fixed' && mp[t].v !== '') ? 'fixed' : (mp[t].t === 'auto' && idx[t] >= 0) ? 'col' : 'none';
+  const tags = m.cols.map(c => c[0]).filter(t => eff(t) !== 'none' || isDefTag(t));
+  const errs = [], notes = [], filled = {};
+  tags.filter(t => eff(t) === 'none').forEach(t => notes.push(`${t} : aucune colonne trouvée dans cet onglet, -1 appliqué`));
+  m.req.filter(t => !isDefTag(t) && eff(t) === 'none').forEach(t => errs.push(`Colonne ${t} introuvable dans cet onglet (en-têtes lues : ${s.header.filter(Boolean).join(', ') || 'aucune'})`));
+  const aoa = [tags];
+  s.rows.forEach(r => {
+    const src = tags.filter(t => eff(t) === 'col').map(t => r[idx[t]]);
+    if (src.length && src.every(v => v == null || String(v).trim() === '')) { aoa.push(tags.map(() => null)); return; }
+    aoa.push(tags.map(t => {
+      let v = eff(t) === 'fixed' ? mp[t].v : eff(t) === 'col' ? r[idx[t]] : null;
+      if (isDefTag(t) && (v == null || String(v).trim() === '')){ v = '-1'; if (eff(t) === 'col') filled[t] = (filled[t] || 0) + 1; }
+      return v;
+    }));
+  });
+  Object.keys(filled).forEach(t => notes.push(`${t} : ${filled[t]} cellule(s) vide(s) remplacée(s) par -1`));
+  return { aoa, errs, notes };
+}
+function generateAll(){
+  const ange = $('ange').checked;
+  const p = { dltype: $('dltype').value, isddm: $('isddm').value, excCat: ange ? 'DDM SECONDAIRE' : '', excVal: 'true' };
+  const now = fmtDate(new Date());
+  chosenSheets().forEach(s => {
+    const { aoa, errs: pre, notes } = normalized(s);
+    const r = pre.length ? { xml:null, errs:pre, warns:[], count:0, cleaned:0, file:MODS[mod].out } : generate(mod, aoa, p, now, s.hdrRow);
+    if (r.xml) r.warns = notes.concat(r.warns);
+    const key = `${mod}|${s.name}`;
+    if (r.xml) outputs[key] = { xml:r.xml, file:r.file, dir:slug(s.name), mod, sheet:s.name, res:r };
+    else { delete outputs[key]; outputs[key + '|err'] = { xml:null, file:r.file, dir:slug(s.name), mod, sheet:s.name, res:r }; }
+  });
+  // une erreur remplace la ligne ok du même couple
+  Object.keys(outputs).forEach(k => { if (k.endsWith('|err')){ const ok = k.slice(0, -4); if (outputs[ok]) delete outputs[k]; } });
+  renderOutputs(); $('s3').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function renderOutputs(){
+  const box = $('results'); box.textContent = '';
+  const keys = Object.keys(outputs);
+  totalCards = keys.length;
+  keys.forEach(k => { const o = outputs[k]; box.append(card(`${o.sheet}`, o.res, o)); });
+  if (keys.length) $('s3').open = true;
+  const ok = keys.filter(k => outputs[k].xml).length;
+  $('btnZip').disabled = ok === 0; $('btnClear').disabled = keys.length === 0;
+  $('zipHint').textContent = ok ? `${ok} fichier(s) prêt(s)` : '';
+  $('s3').hidden = keys.length === 0;
+}
+let cardSeq = 0, totalCards = 0;
+function card(title, r, o){
+  const el = document.createElement('div'); el.className = 'res';
+  const h = document.createElement('header');
+  const l = document.createElement('div'); const t = document.createElement('h3'); t.textContent = title;
+  const fn = document.createElement('div'); fn.className = 'fn'; fn.textContent = `${o.mod} · ${o.dir}/${r.file}`; l.append(t, fn);
+  const rt = document.createElement('div'); rt.className = 'row';
+  const bd = document.createElement('span'); bd.className = 'badge ' + (r.xml ? 'b-ok' : 'b-err');
+  bd.textContent = r.xml ? `${r.count} objet(s)` : 'non généré'; rt.append(bd);
+  const nAl = r.warns.length + (r.xml && r.cleaned ? 1 : 0);
+  if (nAl){ const c = document.createElement('span'); c.className = 'cnt'; c.textContent = `${nAl} alerte(s)`; rt.append(c); }
+  if (r.xml){ const b = document.createElement('button'); b.textContent = 'Enregistrer'; b.addEventListener('click', () => save(`${o.dir}_${r.file}`, r.xml, b)); rt.append(b); }
+  const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'tg';
+  const body = document.createElement('div'); body.id = 'body_' + (++cardSeq);
+  const collapsed = !!r.xml && totalCards > 3;
+  const setOpen = o => { body.hidden = !o; tg.textContent = o ? 'Masquer' : 'Détails'; tg.setAttribute('aria-expanded', String(o)); };
+  tg.setAttribute('aria-controls', body.id); tg.addEventListener('click', () => setOpen(body.hidden)); setOpen(!collapsed);
+  rt.append(tg);
+  h.append(l, rt); el.append(h); el.append(body);
+  const msgs = document.createElement('div'); msgs.className = 'msgs';
+  const addm = (c, m) => { const d = document.createElement('div'); d.className = 'msg ' + c; d.textContent = m; msgs.append(d); };
+  r.errs.slice(0, 12).forEach(m => addm('e', m)); if (r.errs.length > 12) addm('e', `… et ${r.errs.length - 12} autre(s) erreur(s)`);
+  r.warns.slice(0, 12).forEach(m => addm('w', m));
+  if (r.xml && r.cleaned) addm('w', `${r.cleaned} valeur(s) nettoyée(s) (espaces, ligatures Œ/Æ)`);
+  if (msgs.children.length) body.append(msgs);
+  if (r.xml){ const pre = document.createElement('pre'); pre.textContent = r.xml.split(/\r?\n/).slice(0, 12).join('\n') + '\n…'; body.append(pre); }
+  return el;
+}
+async function save(filename, data, btn){
+  if (!downloads){
+    /* Hors claude.ai : téléchargement navigateur classique */
+    try { const blob = data instanceof Blob ? data : new Blob([data]); const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = filename; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000); if (btn) btn.textContent = 'Enregistré'; }
+    catch(e){ $('zipHint').textContent = 'Enregistrement impossible dans cette vue.'; }
+    return;
+  }
+  try { await downloads.save({ filename, data }); if (btn) btn.textContent = 'Enregistré'; }
+  catch(e){ if (e && e.code !== 'declined') $('zipHint').textContent = 'Enregistrement impossible : ' + (e.message || e.code); }
+}
+async function saveZip(){
+  const z = new JSZip();
+  Object.values(outputs).forEach(o => { if (o.xml) z.file(`${o.dir}/${o.file}`, o.xml); });
+  const mods = Array.from(new Set(Object.values(outputs).filter(o => o.xml).map(o => o.mod)));
+  await save(`XML_${mods.join('_')}.zip`, await z.generateAsync({ type:'blob', compression:'DEFLATE' }), null);
+}
+function demoWorkbook(){
+  const wb = XLSX.utils.book_new();
+  const mk = (rows) => XLSX.utils.aoa_to_sheet([['Fiche produits (exemple fictif)'], ['Désignation','Famille','DLC (h)'], ...rows]);
+  XLSX.utils.book_append_sheet(wb, mk([['Soupe de légumes','Plats',72],['Tiramisu ','Dessert',48],['Bacon de bœuf','Viandes',24]]), 'FR');
+  XLSX.utils.book_append_sheet(wb, mk([['Groentesoep','Gerechten',72],['Tiramisu','Dessert',48]]), 'BE NL');
+  return wb;
+}
+$('btnDemo').addEventListener('click', () => loadWorkbook(demoWorkbook(), 'Exemple chargé (données fictives)'));
+function readFile(f){
+  const rd = new FileReader();
+  rd.onload = () => { try { loadWorkbook(XLSX.read(rd.result, { type:'array', cellDates:true }), f.name); }
+    catch(e){ $('dropTitle').textContent = 'Fichier illisible'; $('dropSub').textContent = 'Vérifie que c\'est bien un classeur Excel (.xlsx).'; } };
+  rd.readAsArrayBuffer(f);
+}
+$('file').addEventListener('change', e => e.target.files[0] && readFile(e.target.files[0]));
+const dz = $('drop');
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('file').click(); } });
+$('btnGen').addEventListener('click', generateAll);
+$('btnZip').addEventListener('click', saveZip);
+$('btnClear').addEventListener('click', () => { outputs = {}; renderOutputs(); });
+</script>
+</body>
+</html>
